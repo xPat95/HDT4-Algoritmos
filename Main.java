@@ -107,6 +107,7 @@ public class Main {
         Scanner scanner = new Scanner(System.in);
         System.out.println("Seleccione el tipo de pila (lista): ");
         String stackType = scanner.nextLine();
+        scanner.close();
         if (stackType.equals("lista")) {
             return new MyStack(new SinglyLinkedList());
         } else {
