@@ -1,4 +1,7 @@
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.Scanner;
+import java.util.Stack;
 
 // Interfaz para la lista
 interface List {
@@ -80,20 +83,24 @@ class MyStack {
     }
 
     public Object pop() {
-        return elements.deleteFirst();
+        return elements.isEmpty() ? null : elements.deleteFirst();
     }
 
     public Object peek() {
-        return elements.getFirst();
+        return elements.isEmpty() ? null : elements.getFirst();
     }
 }
 
 // Clase principal
 public class Main {
     public static void main(String[] args) {
-        MyStack stack = selectStackType();
-        
-        String infixExpression = "(1+2)*9";
+        String infixExpression = readExpressionFromFile("datos.txt");
+        if (infixExpression == null) {
+            System.out.println("Error al leer el archivo.");
+            return;
+        }
+
+        MyStack stack = new MyStack(new SinglyLinkedList());
         String postfixExpression = convertToPostfix(infixExpression, stack);
         
         System.out.println("Expresión infix: " + infixExpression);
@@ -103,58 +110,72 @@ public class Main {
         displayResult(result);
     }
 
-    private static MyStack selectStackType() {
-        Scanner scanner = new Scanner(System.in);
-        System.out.println("Seleccione el tipo de pila (lista): ");
-        String stackType = scanner.nextLine();
-        scanner.close();
-        if (stackType.equals("lista")) {
-            return new MyStack(new SinglyLinkedList());
-        } else {
-            System.out.println("Tipo de pila no soportado. Usando lista.");
-            return new MyStack(new SinglyLinkedList());
+    private static String readExpressionFromFile(String filename) {
+        try {
+            Scanner scanner = new Scanner(new File(filename));
+            String expression = scanner.nextLine().replaceAll("\\s+", ""); // Elimina espacios innecesarios
+            scanner.close();
+            return expression;
+        } catch (FileNotFoundException e) {
+            System.out.println("Archivo no encontrado: " + filename);
+            return null;
         }
     }
 
     private static String convertToPostfix(String infixExpression, MyStack stack) {
         StringBuilder postfix = new StringBuilder();
-        
+        Stack<Character> operatorStack = new Stack<>();
+
         for (int i = 0; i < infixExpression.length(); i++) {
             char c = infixExpression.charAt(i);
-            if (Character.isDigit(c)) {
-                postfix.append(c);
+
+            if (Character.isDigit(c)) { 
+                // Capturar números completos
+                while (i < infixExpression.length() && Character.isDigit(infixExpression.charAt(i))) {
+                    postfix.append(infixExpression.charAt(i));
+                    i++;
+                }
+                postfix.append(" "); // Agrega espacio después del número
+                i--; 
             } else if (c == '(') {
-                stack.push(c);
+                operatorStack.push(c);
             } else if (c == ')') {
-                while (!stack.isEmpty() && (char) stack.peek() != '(') {
-                    postfix.append(stack.pop());
+                while (!operatorStack.isEmpty() && operatorStack.peek() != '(') {
+                    postfix.append(operatorStack.pop()).append(" ");
                 }
-                stack.pop(); 
+                operatorStack.pop(); // Eliminar '('
             } else {
-                while (!stack.isEmpty() && precedence((char) stack.peek()) >= precedence(c)) {
-                    postfix.append(stack.pop());
+                while (!operatorStack.isEmpty() && precedence(operatorStack.peek()) >= precedence(c)) {
+                    postfix.append(operatorStack.pop()).append(" ");
                 }
-                stack.push(c);
+                operatorStack.push(c);
             }
         }
-        
-        while (!stack.isEmpty()) {
-            postfix.append(stack.pop());
+
+        while (!operatorStack.isEmpty()) {
+            postfix.append(operatorStack.pop()).append(" ");
         }
 
-        return postfix.toString();
+        return postfix.toString().trim();
     }
 
     private static int evaluatePostfix(String postfixExpression, MyStack stack) {
-        for (int i = 0; i < postfixExpression.length(); i++) {
-            char c = postfixExpression.charAt(i);
-            if (Character.isDigit(c)) {
-                stack.push(c - '0');
+        Scanner scanner = new Scanner(postfixExpression);
+        while (scanner.hasNext()) {
+            if (scanner.hasNextInt()) {
+                stack.push(scanner.nextInt());
             } else {
-                int b = (int) stack.pop();
-                int a = (int) stack.pop();
+                char operator = scanner.next().charAt(0);
+                Integer b = (Integer) stack.pop();
+                Integer a = (Integer) stack.pop();
+
+                if (a == null || b == null) {
+                    System.out.println("Error: Expresión mal formada.");
+                    return 0;
+                }
+
                 int result = 0;
-                switch (c) {
+                switch (operator) {
                     case '+': result = a + b; break;
                     case '-': result = a - b; break;
                     case '*': result = a * b; break;
@@ -163,6 +184,8 @@ public class Main {
                 stack.push(result);
             }
         }
+        scanner.close();
+
         return (int) stack.pop();
     }
 
