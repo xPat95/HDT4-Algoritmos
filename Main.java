@@ -2,9 +2,8 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Scanner;
-import java.util.Stack;
 
-// Interface para la lista
+// Interfaz para la lista
 interface List {
     boolean isEmpty();
     void insertFirst(Object data);
@@ -69,11 +68,11 @@ class Node {
 }
 
 // Clase para la pila
-class myStack {
+class MyStack {
     private List elements;
 
     // Constructor
-    public myStack(List list) {
+    public MyStack(List list) {
         this.elements = list;
     }
 
@@ -100,54 +99,38 @@ class myStack {
 // Clase principal
 public class Main {
     public static void main(String[] args) {
-        selectStackType();
-        selectListType();
+        // Selección de tipo de lista y pila
+        MyStack stack = selectStackType();
         
+        // Expresión infija
         String infixExpression = "(1+2)*9";
-        String postfixExpression = convertToPostfix(infixExpression);
+        String postfixExpression = convertToPostfix(infixExpression, stack);
+        
         System.out.println("Expresión infix: " + infixExpression);
         System.out.println("Expresión postfix: " + postfixExpression);
         
-        int result = evaluatePostfix(postfixExpression);
+        // Evaluar la expresión postfija
+        int result = evaluatePostfix(postfixExpression, stack);
         displayResult(result);
     }
 
-    private static void selectStackType() {
-        try (Scanner scanner = new Scanner(System.in)) {
-            System.out.println("Seleccione el tipo de pila (arrayList, vector, lista): ");
-            String stackType = scanner.nextLine();
+    // Método para seleccionar el tipo de pila
+    private static MyStack selectStackType() {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Seleccione el tipo de pila (lista): ");
+        String stackType = scanner.nextLine();
+        if (stackType.equals("lista")) {
+            return new MyStack(new SinglyLinkedList());
+        } else {
+            System.out.println("Tipo de pila no soportado. Usando lista.");
+            return new MyStack(new SinglyLinkedList());
         }
     }
 
-    private static void selectListType() {
-        try (Scanner scanner = new Scanner(System.in)) {
-            System.out.println("Seleccione el tipo de lista (simplemente encadenada, doblemente encadenada): ");
-            if (scanner.hasNextLine()) {
-                String listType = scanner.nextLine();
-                // Aquí puedes hacer lo que necesites con el tipo de lista
-            } else {
-                System.out.println("No se proporcionó una entrada válida para el tipo de lista.");
-                // Manejar el caso en el que no hay entrada disponible
-            }
-        }
-    }
-    private static String readExpressionFromFile(String filename) {
-        StringBuilder expression = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                expression.append(line.trim());
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return expression.toString();
-    }
-
-    private static String convertToPostfix(String infixExpression) {
+    // Método para convertir la expresión infija a postfija
+    private static String convertToPostfix(String infixExpression, MyStack stack) {
         StringBuilder postfix = new StringBuilder();
-        Stack<Character> stack = new Stack<>();
-
+        
         for (int i = 0; i < infixExpression.length(); i++) {
             char c = infixExpression.charAt(i);
             if (Character.isDigit(c)) {
@@ -155,18 +138,19 @@ public class Main {
             } else if (c == '(') {
                 stack.push(c);
             } else if (c == ')') {
-                while (!stack.isEmpty() && stack.peek() != '(') {
+                while (!stack.isEmpty() && (char) stack.peek() != '(') {
                     postfix.append(stack.pop());
                 }
-                stack.pop(); // Discard '('
-            } else { // Operator
-                while (!stack.isEmpty() && precedence(stack.peek()) >= precedence(c)) {
+                stack.pop(); // Descartar '('
+            } else { // Operador
+                while (!stack.isEmpty() && precedence((char) stack.peek()) >= precedence(c)) {
                     postfix.append(stack.pop());
                 }
                 stack.push(c);
             }
         }
 
+        // Vaciar la pila
         while (!stack.isEmpty()) {
             postfix.append(stack.pop());
         }
@@ -174,25 +158,39 @@ public class Main {
         return postfix.toString();
     }
 
-    private static int precedence(char operator) {
-        switch (operator) {
-            case '+':
-            case '-':
-                return 1;
-            case '*':
-            case '/':
-                return 2;
+    // Método para evaluar la expresión postfija
+    private static int evaluatePostfix(String postfixExpression, MyStack stack) {
+        for (int i = 0; i < postfixExpression.length(); i++) {
+            char c = postfixExpression.charAt(i);
+            if (Character.isDigit(c)) {
+                stack.push(c - '0');  // Convertir char a int y apilar
+            } else {
+                int b = (int) stack.pop(); // Operando 2
+                int a = (int) stack.pop(); // Operando 1
+                int result = 0;
+                switch (c) {
+                    case '+': result = a + b; break;
+                    case '-': result = a - b; break;
+                    case '*': result = a * b; break;
+                    case '/': result = a / b; break;
+                }
+                stack.push(result); // Resultado de la operación
+            }
         }
-        return -1;
+        return (int) stack.pop(); // El resultado final
     }
 
-    private static int evaluatePostfix(String postfixExpression) {
-        // Implementación del algoritmo para evaluar la expresión postfix
-        // Aquí debería ir la lógica para evaluar la expresión
-        return 0;
-    }
-
+    // Método para mostrar el resultado
     private static void displayResult(int result) {
         System.out.println("El resultado de la expresión es: " + result);
+    }
+
+    // Método para determinar la precedencia de los operadores
+    private static int precedence(char operator) {
+        switch (operator) {
+            case '+': case '-': return 1;
+            case '*': case '/': return 2;
+        }
+        return -1;
     }
 }
